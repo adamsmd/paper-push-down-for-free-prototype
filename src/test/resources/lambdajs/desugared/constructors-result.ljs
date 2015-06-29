@@ -1,0 +1,612 @@
+(let
+ (($global (alloc (object))))
+ (let
+  ((@Object_prototype (alloc (object))))
+  (let
+   ((@Function_prototype (alloc (object))))
+   (let
+    ((@isRefComb (lambda (f e)
+                  (if (=== (typeof e) "location")
+                   (f (deref e))
+                   #f))))
+    (let
+     ((@toObject (lambda (x)
+                  (if (=== (typeof x) "undefined")
+                   (throw ($makeException "TypeError" "toObject received undefined"))
+                   (if (=== x null)
+                    (throw ($makeException "TypError" "toObject received null"))
+                    (if (=== (typeof x) "boolean")
+                     (alloc (object ("$proto" "$Boolean.prototype")
+                                    ("$class" "Boolean")
+                                    ("$value" x)))
+                     (if (=== (typeof x) "number")
+                      (alloc (object ("$proto" "$Number.prototype")
+                                     ("$class" "Number")
+                                     ("$value" x)))
+                      (if (=== (typeof x) "string")
+                       (alloc (object ("$proto" "$String.prototype")
+                                      ("$class" "String")
+                                      ("$value" x)))
+                       x))))))))
+     (let
+      (($makeException (lambda (name msg)
+                        (@newDirect (get-field
+                                     $global
+                                     name) (alloc (object ("0" msg)
+                                                          ("length" 1.0)
+                                                          ("$isArgs" #t)))))))
+      (let
+       ((@newDirect (lambda ($constr @argObj)
+                     (if (if (if (=== (typeof $constr) "location")
+                              (=== (typeof (deref $constr)) "object")
+                              #f)
+                          (=== (typeof (get-field
+                                        (deref $constr)
+                                        "$code")) "lambda")
+                          #f)
+                      (let
+                       (($protoField (get-field
+                                      (deref $constr)
+                                      "prototype")))
+                       (let
+                        (($protoObj (if (if (=== (typeof $protoField) "location")
+                                         (=== (typeof (deref $protoField)) "object")
+                                         #f)
+                                     $protoField
+                                     @Object_prototype)))
+                        (let
+                         (($newObj (alloc (object ("$constructing" #t)
+                                                  ("$class" "Object")
+                                                  ("$proto" $protoField)))))
+                         (let
+                          ((newResult ((get-field
+                                        (deref $constr)
+                                        "$code") $newObj @argObj)))
+                          (if (if (=== (typeof newResult) "location")
+                               (=== (typeof (deref newResult)) "object")
+                               #f)
+                           newResult
+                           (begin
+                            (set!
+                             $newObj
+                             (delete-field (deref $newObj)
+                              "$constructing"))
+                            $newObj))))))
+                      (throw ($makeException "TypeError" "new not given a function"))))))
+       (let
+        ((@toPrimitive (lambda (first second $x)
+                        (if (=== (typeof $x) "location")
+                         (let
+                          ((str (lambda ()
+                                 (let
+                                  (($toStr (get-field
+                                            (deref $x)
+                                            second)))
+                                  (if (if (if (=== (typeof $toStr) "location")
+                                           (=== (typeof (deref $toStr)) "object")
+                                           #f)
+                                       (=== (typeof (get-field
+                                                     (deref $toStr)
+                                                     "$code")) "lambda")
+                                       #f)
+                                   (let
+                                    (($tRes ((get-field
+                                              (deref $toStr)
+                                              "$code") $x (object ("length" 0.0)
+                                                                  ("$isArgs" #t)))))
+                                    (if (prim? $tRes)
+                                     $tRes
+                                     (throw ($makeException "TypeError" "cannot convert to primitive"))))
+                                   (throw ($makeException "TypeError" "cannot convert to primitive")))))))
+                          (let
+                           (($vOf (get-field
+                                   (deref $x)
+                                   first)))
+                           (if (if (if (=== (typeof $vOf) "location")
+                                    (=== (typeof (deref $vOf)) "object")
+                                    #f)
+                                (=== (typeof (get-field
+                                              (deref $vOf)
+                                              "$code")) "lambda")
+                                #f)
+                            (let
+                             (($tRes ((get-field
+                                       (deref $vOf)
+                                       "$code") $x (object ("length" 0.0)
+                                                           ("$isArgs" #t)))))
+                             (if (prim? $tRes)
+                              $tRes
+                              (str)))
+                            (str))))
+                         $x))))
+        (let
+         ((@toPrimitive_String (lambda (x)
+                                (@toPrimitive "toString" "valueOf" x))))
+         (let
+          ((@toPrimitive_Number (lambda (x)
+                                 (@toPrimitive "valueOf" "toString" x))))
+          (let
+           ((@toNumber (lambda ($toNum)
+                        (if (=== (typeof $toNum) "location")
+                         (prim->number (@toPrimitive_Number $toNum))
+                         (prim->number $toNum)))))
+           (let
+            ((@OpGT (lambda (@x @y)
+                     (let
+                      (($opLhs @x)
+                       ($opRhs @y))
+                      (let
+                       (($res (let
+                               (($ltLhs (@toPrimitive_Number $opRhs))
+                                ($ltRhs (@toPrimitive_Number $opLhs)))
+                               (if (if (=== (typeof $ltLhs) "string")
+                                    (=== (typeof $ltRhs) "string")
+                                    #f)
+                                (string-< $ltLhs $ltRhs)
+                                (< (prim->number $ltLhs) (prim->number $ltRhs))))))
+                       (if (=== (typeof $res) "undefined")
+                        #f
+                        $res))))))
+            (let
+             ((@OpLT (lambda (@x @y)
+                      (let
+                       (($opLhs @x)
+                        ($opRhs @y))
+                       (let
+                        (($res (let
+                                (($ltLhs (@toPrimitive_Number $opLhs))
+                                 ($ltRhs (@toPrimitive_Number $opRhs)))
+                                (if (if (=== (typeof $ltLhs) "string")
+                                     (=== (typeof $ltRhs) "string")
+                                     #f)
+                                 (string-< $ltLhs $ltRhs)
+                                 (< (prim->number $ltLhs) (prim->number $ltRhs))))))
+                        (if (=== (typeof $res) "undefined")
+                         #f
+                         $res))))))
+             (let
+              ((@OpGEq (lambda (@x @y)
+                        (let
+                         (($opLhs @x)
+                          ($opRhs @y))
+                         (let
+                          (($res (let
+                                  (($ltLhs (@toPrimitive_Number $opLhs))
+                                   ($ltRhs (@toPrimitive_Number $opRhs)))
+                                  (if (if (=== (typeof $ltLhs) "string")
+                                       (=== (typeof $ltRhs) "string")
+                                       #f)
+                                   (string-< $ltLhs $ltRhs)
+                                   (< (prim->number $ltLhs) (prim->number $ltRhs))))))
+                          (if (let
+                               (($or (=== (typeof $res) "undefined")))
+                               (if $or
+                                $or
+                                $res))
+                           #f
+                           #t))))))
+              (let
+               ((@OpIn (lambda (@x @y)
+                        (let
+                         (($0
+                           (let
+                            (($toStr @x))
+                            (if (=== (typeof $toStr) "location")
+                             (prim->string (@toPrimitive_Number $toStr))
+                             (prim->string $toStr))))
+                          ($1
+                           (@toObject @y)))
+                         (has-own-prop? (deref $1) $0)))))
+               (let
+                ((@OpInstanceof (lambda (@x @y)
+                                 (let
+                                  (($lhs @x)
+                                   ($rhs @y))
+                                  (if (if (@isRefComb (lambda (@x)
+                                                       (let
+                                                        (($isF @x))
+                                                        (if (=== (typeof $isF) "object")
+                                                         (=== (typeof (get-field
+                                                                       $isF
+                                                                       "$code")) "lambda")
+                                                         #f))) $rhs)
+                                       #f
+                                       #t)
+                                   (throw ($makeException "TypeError" ":instanceof args of wrong type"))
+                                   (if (if (@isRefComb (lambda (@x)
+                                                        (=== (typeof @x) "object")) $lhs)
+                                        #f
+                                        #t)
+                                    #f
+                                    (let
+                                     (($2
+                                       (get-field
+                                        (deref $rhs)
+                                        "prototype")))
+                                     (let
+                                      (($3
+                                        (alloc $lhs))
+                                       ($4
+                                        (alloc #f)))
+                                      (begin
+                                       (label $break
+                                        (while
+                                         (if (=== (deref $3) null)
+                                          #f
+                                          #t)
+                                         (if (=== (deref $3) $2)
+                                          (begin
+                                           (set!
+                                            $4
+                                            #t)
+                                           (break $break
+                                            undefined))
+                                          (set!
+                                           $3
+                                           (get-field
+                                            (deref (deref $3))
+                                            "$proto")))))
+                                       (deref $4))))))))))
+                (let
+                 ((@OpEq (lambda (@x @y)
+                          (let
+                           (($lhs @x)
+                            ($rhs @y))
+                           (if (== $lhs $rhs)
+                            #t
+                            (if (=== (typeof $lhs) "location")
+                             (== (@toPrimitive_Number $lhs) $rhs)
+                             (if (=== (typeof $rhs) "location")
+                              (== $lhs (@toPrimitive_Number $rhs))
+                              #f)))))))
+                 (let
+                  ((@OpNEq (lambda (@x @y)
+                            (if (let
+                                 (($lhs @x)
+                                  ($rhs @y))
+                                 (if (== $lhs $rhs)
+                                  #t
+                                  (if (=== (typeof $lhs) "location")
+                                   (== (@toPrimitive_Number $lhs) $rhs)
+                                   (if (=== (typeof $rhs) "location")
+                                    (== $lhs (@toPrimitive_Number $rhs))
+                                    #f))))
+                             #f
+                             #t))))
+                  (let
+                   ((@OpStrictNEq (lambda (@x @y)
+                                   (if (=== @x @y)
+                                    #f
+                                    #t))))
+                   (let
+                    ((@OpStrictEq (lambda (@x @y)
+                                   (=== @x @y))))
+                    (let
+                     ((@OpLAnd (lambda (@x @y)
+                                (let
+                                 (($lAnd @x))
+                                 (if (if (prim->bool $lAnd)
+                                      #f
+                                      #t)
+                                  $lAnd
+                                  @y)))))
+                     (let
+                      ((@OpLOr (lambda (@x @y)
+                                (let
+                                 (($lOr @x))
+                                 (if (prim->bool $lOr)
+                                  $lOr
+                                  @y)))))
+                      (let
+                       ((@OpMul (lambda (@x @y)
+                                 (let
+                                  (($opLhs @x)
+                                   ($opRhs @y))
+                                  (let
+                                   (($opLhs2 (@toNumber $opLhs))
+                                    ($opRhs2 (@toNumber $opRhs)))
+                                   (* $opLhs2 $opRhs2))))))
+                       (let
+                        ((@OpDiv (lambda (@x @y)
+                                  (let
+                                   (($opLhs @x)
+                                    ($opRhs @y))
+                                   (let
+                                    (($opLhs2 (@toNumber $opLhs))
+                                     ($opRhs2 (@toNumber $opRhs)))
+                                    (/ $opLhs2 $opRhs2))))))
+                        (let
+                         ((@OpMod (lambda (@x @y)
+                                   (let
+                                    (($opLhs @x)
+                                     ($opRhs @y))
+                                    (let
+                                     (($opLhs2 (@toNumber $opLhs))
+                                      ($opRhs2 (@toNumber $opRhs)))
+                                     (% $opLhs2 $opRhs2))))))
+                         (let
+                          ((@OpSub (lambda (@x @y)
+                                    (let
+                                     (($opLhs @x)
+                                      ($opRhs @y))
+                                     (let
+                                      (($opLhs2 (@toNumber $opLhs))
+                                       ($opRhs2 (@toNumber $opRhs)))
+                                      (- $opLhs2 $opRhs2))))))
+                          (let
+                           ((@OpLShift (lambda (@x @y)
+                                        (let
+                                         (($opLhs @x)
+                                          ($opRhs @y))
+                                         (let
+                                          (($lhsShift (to-int-32 (@toNumber $opLhs)))
+                                           ($rhsShift (to-uint-32 (@toNumber $opRhs))))
+                                          (let
+                                           (($rhsShift2 (& $rhsShift (to-integer 31.0))))
+                                           (<< $lhsShift $rhsShift2)))))))
+                           (let
+                            ((@OpSpRShift (lambda (@x @y)
+                                           (let
+                                            (($opLhs @x)
+                                             ($opRhs @y))
+                                            (let
+                                             (($lhsShift (to-int-32 (@toNumber $opLhs)))
+                                              ($rhsShift (to-uint-32 (@toNumber $opRhs))))
+                                             (let
+                                              (($rhsShift2 (& $rhsShift (to-integer 31.0))))
+                                              (>> $lhsShift $rhsShift2)))))))
+                            (let
+                             ((@OpZfRShift (lambda (@x @y)
+                                            (let
+                                             (($opLhs @x)
+                                              ($opRhs @y))
+                                             (let
+                                              (($lhsShift (to-int-32 (@toNumber $opLhs)))
+                                               ($rhsShift (to-uint-32 (@toNumber $opRhs))))
+                                              (let
+                                               (($rhsShift2 (& $rhsShift (to-integer 31.0))))
+                                               (>>> $lhsShift $rhsShift2)))))))
+                             (let
+                              ((@OpBAnd (lambda (@x @y)
+                                         (let
+                                          (($opLhs @x)
+                                           ($opRhs @y))
+                                          (let
+                                           (($bitLhs (to-int-32 (@toNumber $opLhs)))
+                                            ($bitRhs (to-int-32 (@toNumber $opRhs))))
+                                           (& $bitLhs $bitRhs))))))
+                              (let
+                               ((@OpBXor (lambda (@x @y)
+                                          (let
+                                           (($opLhs @x)
+                                            ($opRhs @y))
+                                           (let
+                                            (($bitLhs (to-int-32 (@toNumber $opLhs)))
+                                             ($bitRhs (to-int-32 (@toNumber $opRhs))))
+                                            (^ $bitLhs $bitRhs))))))
+                               (let
+                                ((@OpBOr (lambda (@x @y)
+                                          (let
+                                           (($opLhs @x)
+                                            ($opRhs @y))
+                                           (let
+                                            (($bitLhs (to-int-32 (@toNumber $opLhs)))
+                                             ($bitRhs (to-int-32 (@toNumber $opRhs))))
+                                            (\| $bitLhs $bitRhs))))))
+                                (let
+                                 ((@OpAdd (lambda (@x @y)
+                                           (let
+                                            (($opLhs @x)
+                                             ($opRhs @y))
+                                            (let
+                                             (($addLhs (@toPrimitive_Number $opLhs))
+                                              ($addRhs (@toPrimitive_Number $opRhs)))
+                                             (if (let
+                                                  (($or (=== (typeof $addLhs) "string")))
+                                                  (if $or
+                                                   $or
+                                                   (=== (typeof $addRhs) "string")))
+                                              (string-+ (prim->string $addLhs) (prim->string $addRhs))
+                                              (+ (prim->number $addLhs) (prim->number $addRhs))))))))
+                                 (let
+                                  ((@PrefixLNot (lambda (@x)
+                                                 (if (prim->bool @x)
+                                                  #f
+                                                  #t))))
+                                  (let
+                                   ((@PrefixBNot (lambda (@x)
+                                                  (~ (to-int-32 (@toNumber @x))))))
+                                   (let
+                                    ((@PrefixPlus (lambda (@x)
+                                                   (@toNumber @x))))
+                                    (let
+                                     ((@PrefixMinus (lambda (@x)
+                                                     (- 0.0 (@toNumber @x)))))
+                                     (let
+                                      ((@PrefixTypeof (lambda (@x)
+                                                       (surface-typeof (let
+                                                                        (($x @x))
+                                                                        (if (=== (typeof $x) "location")
+                                                                         (deref $x)
+                                                                         $x))))))
+                                      (let
+                                       ((@PrefixVoid (lambda (@x)
+                                                      (begin
+                                                       (let
+                                                        (($x @x))
+                                                        (if (=== (typeof $x) "location")
+                                                         (deref $x)
+                                                         $x))
+                                                       undefined))))
+                                       (let
+                                        ((@delete (lambda ($delObj $delStr)
+                                                   (if (obj-can-delete? (deref $delObj) $delStr)
+                                                    (begin
+                                                     (set!
+                                                      $delObj
+                                                      (delete-field (deref $delObj)
+                                                       $delStr))
+                                                     #t)
+                                                    #f))))
+                                        (let
+                                         ((@setArray (lambda (@o @f @v)
+                                                      (if (=== @f "length")
+                                                       (throw "setting .length of array NYI")
+                                                       (let
+                                                        (($5
+                                                          (set!
+                                                           @o
+                                                           (update-field (deref @o)
+                                                            @f
+                                                            @v))))
+                                                        (if (let
+                                                             (($isai @f))
+                                                             (if (=== (typeof $isai) "string")
+                                                              (let
+                                                               (($intai (to-uint-32 (prim->number $isai))))
+                                                               (if (if (=== $intai 4.294967295e9)
+                                                                    #f
+                                                                    #t)
+                                                                (=== (prim->string $intai) $isai)
+                                                                #f))
+                                                              #f))
+                                                         (let
+                                                          (($aindx (prim->number @f))
+                                                           ($curln (get-field
+                                                                    (deref @o)
+                                                                    "length")))
+                                                          (if (< $aindx $curln)
+                                                           $5
+                                                           (begin
+                                                            (set!
+                                                             @o
+                                                             (update-field (deref @o)
+                                                              "length"
+                                                              (+ $aindx 1.0)))
+                                                            $5)))
+                                                         $5))))))
+                                         (begin
+                                          (set!
+                                           @Object_prototype
+                                           (update-field (deref @Object_prototype)
+                                            "$proto"
+                                            null))
+                                          (begin
+                                           (set!
+                                            @Object_prototype
+                                            (update-field (deref @Object_prototype)
+                                             "$class"
+                                             "Object"))
+                                           (begin
+                                            (set!
+                                             @Object_prototype
+                                             (update-field (deref @Object_prototype)
+                                              "constructor"
+                                              undefined))
+                                            (begin
+                                             (set!
+                                              @Object_prototype
+                                              (update-field (deref @Object_prototype)
+                                               "toString"
+                                               (alloc (object ("$code" (lambda (this arguments)
+                                                                        (let
+                                                                         ()
+                                                                         (string-+ "[object " (string-+ (get-field
+                                                                                                         (deref this)
+                                                                                                         "$class") "]")))))
+                                                              ("arguments" null)
+                                                              ("prototype" (alloc (object ("$proto" @Object_prototype))))
+                                                              ("$proto" @Function_prototype)
+                                                              ("length" 0.0)
+                                                              ("$strRep" "function fromafunctionboject(){}")))))
+                                             (begin
+                                              (set!
+                                               @Object_prototype
+                                               (update-field (deref @Object_prototype)
+                                                "toLocaleString"
+                                                (alloc (object ("$code" (lambda (this arguments)
+                                                                         (let
+                                                                          ()
+                                                                          (string-+ "[object " (string-+ (get-field
+                                                                                                          (deref this)
+                                                                                                          "$class") "]")))))
+                                                               ("arguments" null)
+                                                               ("prototype" (alloc (object ("$proto" @Object_prototype))))
+                                                               ("$proto" @Function_prototype)
+                                                               ("length" 0.0)
+                                                               ("$strRep" "function fromafunctionboject(){}")))))
+                                              (begin
+                                               (set!
+                                                @Object_prototype
+                                                (update-field (deref @Object_prototype)
+                                                 "valueOf"
+                                                 (alloc (object ("$code" (lambda (this arguments)
+                                                                          (let
+                                                                           ()
+                                                                           this)))
+                                                                ("arguments" null)
+                                                                ("prototype" (alloc (object ("$proto" @Object_prototype))))
+                                                                ("$proto" @Function_prototype)
+                                                                ("length" 0.0)
+                                                                ("$strRep" "function fromafunctionboject(){}")))))
+                                               (begin
+                                                (set!
+                                                 @Object_prototype
+                                                 (update-field (deref @Object_prototype)
+                                                  "hasOwnProperty"
+                                                  (alloc (object ("$code" (lambda (this arguments)
+                                                                           (let
+                                                                            ((V (get-field
+                                                                                 (deref (deref arguments))
+                                                                                 "0")))
+                                                                            (has-own-prop? (deref this) (let
+                                                                                                         (($toStr V))
+                                                                                                         (if (=== (typeof $toStr) "location")
+                                                                                                          (prim->string (@toPrimitive_Number $toStr))
+                                                                                                          (prim->string $toStr)))))))
+                                                                 ("arguments" null)
+                                                                 ("prototype" (alloc (object ("$proto" @Object_prototype))))
+                                                                 ("$proto" @Function_prototype)
+                                                                 ("length" 1.0)
+                                                                 ("$strRep" "function fromafunctionboject(){}")))))
+                                                (begin
+                                                 (set!
+                                                  @Function_prototype
+                                                  (update-field (deref @Function_prototype)
+                                                   "$proto"
+                                                   @Object_prototype))
+                                                 (begin
+                                                  (set!
+                                                   @Function_prototype
+                                                   (update-field (deref @Function_prototype)
+                                                    "$class"
+                                                    "Function"))
+                                                  (begin
+                                                   (set!
+                                                    @Function_prototype
+                                                    (update-field (deref @Function_prototype)
+                                                     "$strRep"
+                                                     "function () {\n}"))
+                                                   (begin
+                                                    (set!
+                                                     @Function_prototype
+                                                     (update-field (deref @Function_prototype)
+                                                      "constructor"
+                                                      undefined))
+                                                    (begin
+                                                     (set!
+                                                      @Function_prototype
+                                                      (update-field (deref @Function_prototype)
+                                                       "toString"
+                                                       (alloc (object ("$code" (lambda (this arguments)
+                                                                                (let
+                                                                                 ()
+                                                                                 (get-field
+                                                                                  (deref this)
+                                                                                  "$strRep"))))
+                                                                      ("arguments" null)
+                                                                      ("prototype" (alloc (object ("$proto" @Object_prototype))))
+                                                                      ("$proto" @Function_prototype)
+                                                                      ("length" 0.0)
+                                                                      ("$strRep" "function fromafunctionboject(){}")))))
+                                                     42.0)))))))))))))))))))))))))))))))))))))))))))))))))))))

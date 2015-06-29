@@ -1,0 +1,169 @@
+(let (($global (alloc (object)))
+      (@isRefComb (lambda (f e)
+        (if (=== (typeof e) "location")
+         (f (deref e))
+         #f)))
+       (@Object_prototype (alloc (object ("$proto" null))))
+       ($makeException (alloc (lambda (x y) undefined))))
+  (let ((@newDirect (lambda ($constr @argObj)
+                                    (if (if (if (=== (typeof $constr) "location")
+                                             (=== (typeof (deref $constr)) "object")
+                                             #f)
+                                         (=== (typeof (get-field
+                                                       (deref $constr)
+                                                       "$code")) "lambda")
+                                         #f)
+                                     (let
+                                      (($protoField (get-field
+                                                     (deref $constr)
+                                                     "prototype")))
+                                      (let
+                                       (($protoObj (if (if (=== (typeof $protoField) "location")
+                                                        (=== (typeof (deref $protoField)) "object")
+                                                        #f)
+                                                    $protoField
+                                                    @Object_prototype)))
+                                       (let
+                                        (($newObj (alloc (object ("$constructing" #t)
+                                                                 ("$class" "Object")
+                                                                 ("$proto" $protoField)))))
+                                        (let
+                                         ((newResult ((get-field
+                                                       (deref $constr)
+                                                       "$code") $newObj @argObj)))
+                                         (if (if (=== (typeof newResult) "location")
+                                              (=== (typeof (deref newResult)) "object")
+                                              #f)
+                                          newResult
+                                          (begin
+                                           (set!
+                                            $newObj
+                                            (delete-field (deref $newObj)
+                                             "$constructing"))
+                                           $newObj))))))
+                                     (throw ((deref $makeException) "TypeError" "new not given a function"))))))
+      (begin
+        (set! $makeException (lambda (name msg)
+                                    (@newDirect (get-field
+                                                     (deref $global)
+                                                     name) (alloc (object ("0" msg)
+                                                                          ("length" 1.0)
+                                                                          ("$isArgs" #t))))))
+        (let ((TypeError (alloc (alloc (object
+                           ("$class" "Function")
+                           ("$strRep" "function Error() {\n    [native code]\n}")
+                           ("length" 1.0)
+                           ("$code" (lambda (this arguments)
+                                     (let
+                                      ((msg (get-field
+                                             (deref arguments)
+                                             "0")))
+                                      (begin
+                                       (set!
+                                        this
+                                        (update-field (deref this)
+                                         "$class"
+                                         "Error"))
+                                       (if (if (=== (typeof msg) "undefined")
+                                                #f
+                                                #t)
+                                            (set!
+                                             this
+                                             (update-field (deref this)
+                                              "message"
+                                              (let
+                                               (($toStr msg))
+                                               (if (=== (typeof $toStr) "location")
+                                                (prim->string (@toPrimitive_Number $toStr))
+                                                (prim->string $toStr)))))
+                                            undefined))))))))))
+      (begin
+        (set!
+         $global
+         (update-field (deref $global)
+          "TypeError"
+          (deref TypeError)))
+          (begin
+           (try-finally
+            (try-catch
+             (begin
+              (let
+               (($obj (get-field
+                       (deref $global)
+                       "undefinedfunction")))
+               (if (if (@isRefComb (lambda (@x)
+                                    (let
+                                     (($isF @x))
+                                     (if (=== (typeof $isF) "object")
+                                      (=== (typeof (get-field
+                                                    $isF
+                                                    "$code")) "lambda")
+                                      #f))) $obj)
+                    #f
+                    #t)
+                (throw ((deref $makeException) "TypeError" ":CallExpr given non-function"))
+                (let
+                 (($0
+                   $obj))
+                 ((get-field
+                   (deref $0)
+                   "$code") $global (alloc (alloc (object ("length" 0.0)
+                                                          ("callee" $0)
+                                                          ("$class" "Object")
+                                                          ("$proto" @Object_prototype)
+                                                          ("$isArgs" #t))))))))
+              (let
+               (($obj (get-field
+                       (deref $global)
+                       "alert")))
+               (if (if (@isRefComb (lambda (@x)
+                                    (let
+                                     (($isF @x))
+                                     (if (=== (typeof $isF) "object")
+                                      (=== (typeof (get-field
+                                                    $isF
+                                                    "$code")) "lambda")
+                                      #f))) $obj)
+                    #f
+                    #t)
+                (throw ((deref $makeException) "TypeError" ":CallExpr given non-function"))
+                (let
+                 (($1
+                   $obj))
+                 ((get-field
+                   (deref $1)
+                   "$code") $global (alloc (alloc (object ("length" 1.0)
+                                                          ("callee" $1)
+                                                          ("$class" "Object")
+                                                          ("$proto" @Object_prototype)
+                                                          ("$isArgs" #t)
+                                                          ("0" "I guess you do exist")))))))))
+             (lambda (x)
+              undefined))
+            (let
+             (($obj (get-field
+                     (deref $global)
+                     "alert")))
+             (if (if (@isRefComb (lambda (@x)
+                                  (let
+                                   (($isF @x))
+                                   (if (=== (typeof $isF) "object")
+                                    (=== (typeof (get-field
+                                                  $isF
+                                                  "$code")) "lambda")
+                                    #f))) $obj)
+                  #f
+                  #t)
+              (throw ((deref $makeException) "TypeError" ":CallExpr given non-function"))
+              (let
+               (($2
+                 $obj))
+               ((get-field
+                 (deref $2)
+                 "$code") $global (alloc (alloc (object ("length" 1.0)
+                                                        ("callee" $2)
+                                                        ("$class" "Object")
+                                                        ("$proto" @Object_prototype)
+                                                        ("$isArgs" #t)
+                                                        ("0" "I am alerted regardless of the outcome above")))))))))
+           undefined))))))
