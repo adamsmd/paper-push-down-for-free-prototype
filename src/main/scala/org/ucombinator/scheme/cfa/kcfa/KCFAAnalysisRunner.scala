@@ -71,7 +71,10 @@ with FancyOutput {
     }
 
     if (!opts.simplifyGraph &&
-      resultConfs.toString().contains("Final")) {
+      resultConfs.exists {
+        case (PFinal(_), _) => true
+        case _ => false
+      }) {
       if (opts.verbose) {
         println("Has final state.\n")
       }

@@ -32,6 +32,7 @@
 
 package org.ucombinator.scheme.cfa.kcfa
 
+import org.ucombinator.scheme.cfa.cesk.store.{Store => StoreInterface, LoggingStore, MapStore, SentinelStore}
 import org.ucombinator.scheme.syntax._
 import org.ucombinator.util.FancyOutput
 import org.ucombinator.cfa.AnalysisRunner
@@ -53,7 +54,7 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
     * *******************************************************************/
   type KAddr = (Either[Var, Exp], List[AKont])
 
-  type KStore = KAddr :-> Set[AKont]
+  type KStore = StoreInterface[KAddr, AKont]
 
   /** ******************************************************************
     * Continuations with pointers
@@ -84,7 +85,7 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
 
   def initState(e: Exp): Conf = {
     val a0: KAddr = (Left(SName.gensym("mt")), Nil)
-    val newKStore: KStore = Map.empty + ((a0, Set(MT)))
+    val newKStore: KStore = (new MapStore[KAddr, AKont]() + (a0, Set(MT)))
     (PState(e, Map.empty, Map.empty, a0), newKStore)
   }
 
@@ -120,7 +121,12 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
   def updateKStore(kstore: KStore, pair: (KAddr, AKont)) = {
     val (a, k) = pair
     val oldKonts = kstore.getOrElse(a, Set())
-    kstore + ((a, oldKonts + k))
+    kstore + (a, oldKonts + k)
+  }
+
+  def updateKStoreValues(kstore: KStore, a: KAddr, konts: Set[AKont]) = {
+    val oldKonts = kstore.getOrElse(a, Set())
+    kstore + (a, oldKonts ++ konts)
   }
 
   class PointerCESKException(s: String) extends CESKException(s)
@@ -276,47 +282,72 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
     }
   }
 
+  def kaddrOf(c: ControlState): Option[KAddr] = c match {
+    case PState(_, _, _, a) => Some(a)
+    case _ => None
+  }
 
   /**
    * Kleene iteration of a work set of states
    */
-  private def iterateKCFA(workSet: Set[Conf], edges: Set[Edge], accumStates: Set[Conf]): (Set[(Conf, Conf)], Set[Conf]) = {
+  private def iterateKCFA(initialState: Conf): (Set[(Conf, Conf)], Set[Conf]) = {
+    var edges = Set[Edge]()
+    var accumStates = Set[Conf]()
 
-    val newConfsEdges: Set[(Conf, Edge)] = workSet.map((c: Conf) => {
-      val next: Set[Conf] = mnext(c)
-      val cleanNext = if (shouldGC) {
-        next.map {
-          case (c1@PState(_, _, _, kaddr), kont) => {
-            (gc(c1, kont), gcKStore(kaddr, kont))
-          }
-          case q => q
+    val (init, store) = initialState
+    var globalKStore: StoreInterface[KAddr, AKont] = store
+
+    val deps = scala.collection.mutable.HashMap[KAddr, Set[ControlState]]()
+    val seen = scala.collection.mutable.Set[ControlState]()
+    var todo = List(init)
+
+    seen.add(init)
+    for (a <- kaddrOf(init)) deps(a) = deps.getOrElse(a, Set()) + init
+
+    while (!todo.isEmpty) {
+      val newState = todo.head
+      todo = todo.tail
+
+      seen.add(newState)
+
+      val newConf = (newState, new SentinelStore(globalKStore))
+      val succs = mnext(newConf)
+      val newEdges = succs.map(s => (newConf, s))
+
+      accumStates ++= succs
+      edges ++= newEdges
+
+      println(progressPrefix + " " + accumStates.size + " states computed so far.")
+
+      for ((succState, succKStore) <- succs) {
+
+        if (!seen.contains(succState)) {
+          todo = succState :: todo
+          for (a <- kaddrOf(succState)) deps(a) = deps.getOrElse(a, Set()) + succState
         }
-      } else {
-        next
+
+        val delta = succKStore match {
+          case s: LoggingStore[KAddr, AKont] => s.changeLog
+        }
+        if (!delta.isEmpty) {
+          globalKStore = delta(globalKStore)
+
+          for {
+            a <- delta.dependencies()
+            dep <- deps.getOrElse(a, Set())
+          } todo = dep :: todo
+        }
       }
-      cleanNext.map(x => (x, (c, x)))
-    }).flatten
 
-    val (newStates, newEdges) = newConfsEdges.unzip
-
-    println(progressPrefix + " " + accumStates.size + " states computed so far.")
-
-    val collectedEdges: Set[Edge] = edges ++ newEdges
-
-    if (newStates.subsetOf(accumStates)) {
-      (collectedEdges, accumStates)
-    } else if (interrupt && accumStates.size > interruptAfter) {
-      (collectedEdges, accumStates)
-    } else {
-      iterateKCFA(newStates, collectedEdges, accumStates ++ newStates)
     }
+
+    (edges, accumStates)
   }
 
   type Edge = (Conf, Conf)
 
   def evaluateKCFA(e: Exp): (Set[Edge], Set[Conf]) = {
-    val initialStates = Set(initState(e))
-    iterateKCFA(initialStates, Set(), initialStates)
+    iterateKCFA(initState(e))
   }
 
 }
