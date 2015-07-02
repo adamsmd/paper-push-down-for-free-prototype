@@ -148,9 +148,9 @@ trait PrimOperators {
       /**
        * Input, output and errors
        */
-      case ("display", _) => mkSet(UnspecifiedVal)
-      case ("newline", _) => mkSet(UnspecifiedVal)
-      case ("error", _) => mkSet(UnspecifiedVal)
+      case ("display", _) => Set()
+      case ("newline", _) => Set()
+      case ("error", _) => Set()
 
       /**
        * Lists and pairs

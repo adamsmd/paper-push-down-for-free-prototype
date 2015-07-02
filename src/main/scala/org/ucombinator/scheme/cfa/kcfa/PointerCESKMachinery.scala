@@ -186,8 +186,9 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
     case c@(PState(ae, rho, s, kaddr), kstore)
       if isAtomic(ae) => for {
       k <- lookupKStore(kstore, kaddr)
-      value <- atomicEval(ae, rho, s)
-    } yield (returnValue(k, value, kstore, c, s))
+      values = atomicEval(ae, rho, s)
+      next <- returnValue(k, values, kstore, c, s)
+    } yield next
 
 
     /** ****************************************************
@@ -213,9 +214,8 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
       val s1 = updateStore(s, List((addr, eval)))
       for {
         k <- lookupKStore(kstore, kaddr)
-      } yield {
-        returnValue(k, UnspecifiedVal, kstore, c, s1)
-      }
+        next <- returnValue(k, Set(), kstore, c, s1)
+      } yield next
     }
 
     /** ****************************************************
@@ -257,27 +257,31 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
    * Value return
    */
   def returnValue(k: AKont,
-                  value: Val,
+                  values: Set[Val],
                   kstore: KStore,
                   c: Conf,
-                  s: Store): Conf = {
+                  s: Store): Set[Conf] = {
     k match {
 
       // return to final state
-      case MT => (PFinal(value), kstore)
+      case MT => Set((PFinal(values), kstore))
 
       // return from let-statement
       case Pointed(LetFrame(v, e, rho1), b) => {
         val a = alloc(v, c)
         val rho2 = updateEnv(rho1, List((v, a)))
-        val s1 = updateStore(s, List((a, Set(value))))
-        (PState(e, rho2, s1, b), kstore)
+        val s1 = updateStore(s, List((a, values)))
+        Set((PState(e, rho2, s1, b), kstore))
       }
 
       // return from if-statement
-      case Pointed(IfFrame(tb, eb, rho1), b) => value match {
-        case BoolLit(false) => (PState(eb, rho1, s, b), kstore)
-        case _ => (PState(tb, rho1, s, b), kstore)
+      case Pointed(IfFrame(tb, eb, rho1), b) => {
+        var nexts = Set[Conf]()
+        if (values.exists(_ != BoolLit(false)))
+          nexts = nexts + ((PState(tb, rho1, s, b), kstore))
+        if (values.contains(BoolLit(false)))
+          nexts = nexts + ((PState(eb, rho1, s, b), kstore))
+        nexts
       }
     }
   }

@@ -71,7 +71,7 @@ trait CESKMachinery extends StateSpace with PrimOperators {
       case lam@Lambda(_, _) => Set(Clo(lam, rho))
       case Ref(name) => lookupStore(s, lookupEnv(rho, name))
       case Prim(prim, b) => Set(PrimLit(prim, b))
-      case Unspecified() => Set(UnspecifiedVal) // return empty set :)
+      case Unspecified() => Set()
       case QuoteLit(sexp) => Set(QuotedLit(sexp))
       case NumTopExp => Set(NumTop)
       case SelfLit(SText(str)) => Set(StringLit(str))

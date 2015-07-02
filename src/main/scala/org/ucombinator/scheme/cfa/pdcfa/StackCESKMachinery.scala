@@ -155,15 +155,14 @@ trait StackCESKMachinery extends CESKMachinery {
     /******************************************************
      * Final state
      ******************************************************/
-    case c@(PState(ae, rho, s, kptr), Nil)
-      if isAtomic(ae) => for {
-    /**
-     * (REMARK)
-     * [Non-sense values in a final state]
-     * Consider them as a lost of precision
-     */
-      v <- atomicEval(ae, rho, s) //.filter(isValidValueToReturn(_))
-    } yield (PFinal(v), Nil)
+    case c@(PState(ae, rho, s, kptr), Nil) if isAtomic(ae) => {
+      /**
+       * (REMARK)
+       * [Non-sense values in a final state]
+       * Consider them as a lost of precision
+       */
+      Set((PFinal(atomicEval(ae, rho, s)), Nil))
+    }
 
     // Ok, folks, that's it!
     case (PFinal(_), Nil) => Set()

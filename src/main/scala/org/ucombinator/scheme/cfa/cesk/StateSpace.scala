@@ -137,7 +137,7 @@ trait StateSpace extends PrimOperators {
   case class PState(e: Exp, rho: Env, s: Store, kptr: KAddr) extends ControlState
 
   // final state
-  case class PFinal(v: Val) extends ControlState
+  case class PFinal(v: Set[Val]) extends ControlState
 
   case class ErrorState(e: Exp, msg: String) extends ControlState
 
@@ -181,7 +181,7 @@ trait StateSpace extends PrimOperators {
     pairs.foldLeft(s)((accum, pair) => {
       val (a, vs) = pair
       val oldVals: Set[Val] = accum.getOrElse(a, Set())
-      val newVals: Set[Val] = oldVals ++ vs.filter(v => v != UnspecifiedVal)
+      val newVals: Set[Val] = oldVals ++ vs
       accum + (a, newVals)
     })
 
