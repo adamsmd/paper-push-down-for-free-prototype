@@ -286,9 +286,46 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
     }
   }
 
-  def kaddrOf(c: ControlState): Option[KAddr] = c match {
-    case PState(_, _, _, a) => Some(a)
+  def addressOf(exp: Exp, env: Env) : Option[Addr] = exp match {
+    case Ref(name) => Some(env(name))
     case _ => None
+  }
+
+  def vAddrDeps(c: Configuration) : List[Addr] = {
+    val (exp, env, kaddr) = c
+    exp match {
+      case App(f, args) =>
+        for {
+          exp <- f :: args.args.map(_.exp)
+          addr <- addressOf(exp, env)
+        } yield addr
+      case Let(Bindings(List(Binding(name, exp))), body) =>
+        addressOf(exp, env).toList
+      case If(cond, tBranch, eBranch) =>
+        addressOf(cond, env).toList
+      case SetVar(name, ae) =>
+        addressOf(ae, env).toList
+      case ae =>
+        addressOf(ae, env).toList
+    }
+  }
+
+
+  def kAddrDeps(c: Configuration): List[KAddr] = c match {
+    case (_, _, k) => List(k)
+    //todo: we only should return the address if it is a return state
+  }
+
+  type Configuration = (Exp, Env, KAddr)
+
+  def unwiden(c: Conf): Option[(Configuration, Store, KStore)] = c match {
+    case (PState(exp, env, store, kaddr), kstore) => Some((exp, env, kaddr), store, kstore)
+    case _ => None
+  }
+
+  def widen(c: Configuration, s: Store, k: KStore): Conf = {
+    val (exp, env, kaddr) = c
+    (PState(exp, env, new SentinelStore[Addr, Val](s), kaddr), new SentinelStore[KAddr, AKont](k))
   }
 
   /**
@@ -298,51 +335,65 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
     var edges = Set[Edge]()
     var accumStates = Set[Conf]()
 
-    val (init, store) = initialState
-    var globalKStore: StoreInterface[KAddr, AKont] = store
+    var Some((init, globalVStore, globalKStore)) = unwiden(initialState)
 
-    val deps = scala.collection.mutable.HashMap[KAddr, Set[ControlState]]()
-    val seen = scala.collection.mutable.Set[ControlState]()
-    var todo = List(init)
+    val vdeps = scala.collection.mutable.HashMap[Addr, Set[Configuration]]()
+    val kdeps = scala.collection.mutable.HashMap[KAddr, Set[Configuration]]()
+
+    val seen = scala.collection.mutable.Set[Configuration]()
+    var todo = List[Configuration](init)
 
     seen.add(init)
-    for (a <- kaddrOf(init)) deps(a) = deps.getOrElse(a, Set()) + init
+    for (a <- vAddrDeps(init)) vdeps(a) = vdeps.getOrElse(a, Set()) + init
+    for (a <- kAddrDeps(init)) kdeps(a) = kdeps.getOrElse(a, Set()) + init
 
-    while (!todo.isEmpty) {
-      val newState = todo.head
+    while (todo.nonEmpty) {
+      val current = todo.head
       todo = todo.tail
 
-      seen.add(newState)
+      val conf = widen(current, globalVStore, globalKStore)
+      val nexts = mnext(conf)
+      val newEdges = nexts.map(s => (conf, s))
 
-      val newConf = (newState, new SentinelStore(globalKStore))
-      val succs = mnext(newConf)
-      val newEdges = succs.map(s => (newConf, s))
-
-      accumStates ++= succs
+      accumStates ++= nexts
       edges ++= newEdges
 
       println(progressPrefix + " " + accumStates.size + " states computed so far.")
 
-      for ((succState, succKStore) <- succs) {
+      for (n <- nexts; (next, nextVStore, nextKStore) <- unwiden(n)) {
 
-        if (!seen.contains(succState)) {
-          todo = succState :: todo
-          for (a <- kaddrOf(succState)) deps(a) = deps.getOrElse(a, Set()) + succState
+        if (!seen.contains(next)) {
+          seen.add(next)
+          todo = next :: todo
+          for (a <- vAddrDeps(next)) vdeps(a) = vdeps.getOrElse(a, Set()) + next
+          for (a <- kAddrDeps(next)) kdeps(a) = kdeps.getOrElse(a, Set()) + next
         }
 
-        val delta = succKStore match {
-          case s: LoggingStore[KAddr, AKont] => s.changeLog
+        val vdelta = nextVStore match {
+          case s: LoggingStore[Addr, Val] => s.changeLog
         }
-        if (!delta.isEmpty) {
-          globalKStore = delta(globalKStore)
+        if (!vdelta.isEmpty) {
+          globalVStore = vdelta(globalVStore)
 
           for {
-            a <- delta.dependencies()
-            dep <- deps.getOrElse(a, Set())
+            a <- vdelta.dependencies()
+            dep <- vdeps.getOrElse(a, Set())
           } todo = dep :: todo
         }
-      }
 
+        val kdelta = nextKStore match {
+          case s: LoggingStore[KAddr, AKont] => s.changeLog
+        }
+        if (!kdelta.isEmpty) {
+          globalKStore = kdelta(globalKStore)
+
+          for {
+            a <- kdelta.dependencies()
+            dep <- kdeps.getOrElse(a, Set())
+          } todo = dep :: todo
+        }
+
+      }
     }
 
     (edges, accumStates)
