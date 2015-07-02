@@ -37,6 +37,7 @@ import scala.collection.immutable._
 import org.ucombinator.scheme.syntax._
 import org.ucombinator.dsg._
 
+import org.ucombinator.scheme.cfa.cesk.store.{Store => StoreInterface}
 
 /**
  * @author ilya
@@ -71,7 +72,8 @@ trait StateSpace extends PrimOperators {
    * Standard abstract state-space, following the paper text
    */
   type Env = Var :-> Addr
-  type Store = Addr :-> Set[Val]
+
+  type Store = StoreInterface[Addr, Val]
 
 
   /********************************************************************
@@ -180,7 +182,7 @@ trait StateSpace extends PrimOperators {
       val (a, vs) = pair
       val oldVals: Set[Val] = accum.getOrElse(a, Set())
       val newVals: Set[Val] = oldVals ++ vs.filter(v => v != UnspecifiedVal)
-      accum + ((a, newVals))
+      accum + (a, newVals)
     })
 
   /**

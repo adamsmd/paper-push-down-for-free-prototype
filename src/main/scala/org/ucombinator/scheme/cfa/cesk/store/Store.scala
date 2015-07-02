@@ -27,5 +27,7 @@ trait Store[A, B] {
 
   def filter(p: ((A, Set[B])) => Boolean): Store[A, B]
 
+  def bindings: Iterator[(A, Set[B])]
+
   def toList: List[(A, Set[B])]
 }

@@ -1,6 +1,6 @@
 package org.ucombinator.scheme.cfa.cesk.store
 
-class MapStore[A, B](val map: Map[A, Set[B]]) extends Store[A, B] {
+case class MapStore[A, B](map: Map[A, Set[B]]) extends Store[A, B] {
   def this() = this(Map())
 
   def get(addr: A): Option[Set[B]] = map get addr
@@ -34,4 +34,6 @@ class MapStore[A, B](val map: Map[A, Set[B]]) extends Store[A, B] {
   def toList: List[(A, Set[B])] = map.toList
 
   def filter(p: ((A, Set[B])) => Boolean): MapStore[A, B] = new MapStore[A, B](map.filter(p))
+
+  def bindings: Iterator[(A, Set[B])] = map.iterator
 }

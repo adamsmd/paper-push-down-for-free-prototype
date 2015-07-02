@@ -32,6 +32,7 @@
 
 package org.ucombinator.scheme.cfa.pdcfa
 
+import org.ucombinator.scheme.cfa.cesk.store.MapStore
 import org.ucombinator.scheme.syntax._
 import org.ucombinator.scheme.cfa.cesk._
 import org.ucombinator.util.DataUtil._
@@ -52,7 +53,7 @@ trait StackCESKMachinery extends CESKMachinery {
   /********************************************************************
    * Utility functions
    ********************************************************************/
-  def initState(e: Exp): Conf = (PState(e, Map.empty, Map.empty, ()), Nil)
+  def initState(e: Exp): Conf = (PState(e, Map.empty, new MapStore(), ()), Nil)
 
   /********************************************************************
    * Main non-deterministic abstract step function

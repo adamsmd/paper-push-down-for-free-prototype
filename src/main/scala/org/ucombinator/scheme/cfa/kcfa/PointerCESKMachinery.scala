@@ -86,7 +86,7 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
   def initState(e: Exp): Conf = {
     val a0: KAddr = (Left(SName.gensym("mt")), Nil)
     val newKStore: KStore = (new MapStore[KAddr, AKont]() + (a0, Set(MT)))
-    (PState(e, Map.empty, Map.empty, a0), newKStore)
+    (PState(e, Map.empty, new MapStore(Map.empty), a0), newKStore)
   }
 
   /**

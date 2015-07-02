@@ -61,7 +61,7 @@ trait SchemeGarbageCollector extends StateSpace with GCInterface {
         result
 
         if (printGCDebug) {
-          val original = s.keys.toSet
+          val original = (for ((a, _) <- s.bindings) yield a).toSet
           val delta = original -- result
           if (!delta.isEmpty) {
             println("Original store size: " + original.size + "")
@@ -97,7 +97,7 @@ trait SchemeGarbageCollector extends StateSpace with GCInterface {
       case (a, vals) => previousAddrs.contains(a)
     }
 
-    val relevantValues = filteredStore.flatMap {
+    val relevantValues = filteredStore.bindings.flatMap {
       // flatten values
       case (a, vals) => vals
     }

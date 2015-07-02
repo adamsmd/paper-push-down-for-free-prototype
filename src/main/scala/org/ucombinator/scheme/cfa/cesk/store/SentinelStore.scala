@@ -31,4 +31,5 @@ class SentinelStore[A, B](updates: List[StoreUpdate[A, B]], val store: Store[A, 
 
   def filter(p: ((A, Set[B])) => Boolean): SentinelStore[A, B] = new SentinelStore[A, B](updates, store.filter(p))
 
+  def bindings: Iterator[(A, Set[B])] = store.bindings
 }
