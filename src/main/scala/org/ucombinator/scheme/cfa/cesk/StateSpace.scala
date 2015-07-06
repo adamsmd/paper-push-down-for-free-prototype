@@ -173,9 +173,13 @@ trait StateSpace extends PrimOperators {
       v + "\nin environment\n" + rho.toString)
   }
 
+  def updateEnv(rho: Env, v: Var, a: Addr): Env = rho + ((v, a))
+
   def updateEnv(rho: Env, pairs: List[(Var, Addr)]) =
     pairs.foldLeft(rho)((accum, pair) => accum + pair)
 
+
+  def updateStore(s: Store, a: Addr, d: Set[Val]): Store = updateStore(s, List((a, d)))
 
   def updateStore(s: Store, pairs: List[(Addr, Set[Val])]) =
     pairs.foldLeft(s)((accum, pair) => {

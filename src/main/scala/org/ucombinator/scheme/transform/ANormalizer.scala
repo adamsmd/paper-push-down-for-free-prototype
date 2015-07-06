@@ -34,6 +34,24 @@ package org.ucombinator.scheme.transform
 
 import org.ucombinator.scheme.syntax._
 
+/*
+
+E ::= (let ([x C]) E) | C
+
+C ::= (V V ...)
+   |  (if V E E)
+   |  (set! x V)
+   |  (O V ...)
+   |  V
+
+V ::= c | x | (λ (x ... ) E)
+
+x ∈ Variables
+c ∈ Constants
+O ∈ Primitive Operations
+
+ */
+
 // TODO: ANormalize letrec into letrec.
 object ANormalizer {
   def apply(p: Program): Exp = {
@@ -282,15 +300,13 @@ class ANormalizer extends ProgramTransformer {
         normalizeExp(lets.toLets)(k)
 
       case SetVar(name, value) =>
-        normalizeLinearName(value)(value =>
-          Sequence(SetVar(name, value),
-            k(Unspecified())))
+        normalizeLinearName(value)(value => k(SetVar(name, value)))
 
       case Begin(ExpBody(exp)) =>
         normalizeExp(exp)(k)
       case Begin(Body(List(), hd :: tl)) =>
-        Sequence(normalize(hd),
-          normalizeExp(Begin(Body(List(), tl)))(k))
+        normalizeExp(hd)(hd =>
+          Sequence(hd, normalizeExp(Begin(Body(List(), tl)))(k)))
       case Begin(body) if !convertBodyToLetRec =>
         Begin(normalizeBody(body)(k))
       case Begin(body) if convertBodyToLetRec =>
@@ -322,7 +338,7 @@ class ANormalizer extends ProgramTransformer {
 
   def normalizeName(exp: Exp)(k: Exp => Exp): Exp =
     normalizeExp(exp)(exp =>
-      if (isAtomic(exp) && exp.isDuplicable)
+      if (isAtomic(exp))
         k(normalize(exp))
       else
         Exp.let(normalize(exp))(k))

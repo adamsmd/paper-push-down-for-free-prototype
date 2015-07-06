@@ -1620,6 +1620,28 @@ object Let1 {
   }
 }
 
+object LetForm {
+  def unapply(e: Exp): Option[(SName, Exp, Exp)] = e match {
+    case Let(Bindings(List(Binding(v, value))), Body(Nil, List(body))) => Some((v, value, body))
+    case _ => None
+  }
+}
+
+object LambdaForm {
+  def unapply(e: Exp): Option[(List[SName], Exp)] = e match {
+    case Lambda(Formals(params, _), Body(Nil, List(body))) => Some((params.map(_.name), body))
+    case _ => None
+  }
+}
+
+object AppForm {
+  def unapply(e: Exp): Option[(Exp, List[Exp])] = e match {
+    case App(f, Arguments(args, _)) => Some((f, args.map(_.exp)))
+    case _ => None
+  }
+}
+
+
 
 
 

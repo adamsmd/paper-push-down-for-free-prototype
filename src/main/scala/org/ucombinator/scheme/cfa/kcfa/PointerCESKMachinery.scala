@@ -96,7 +96,7 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
    * @param kstore kontinuation store
    * @return new continuation address
    */
-  def kalloc(c: ControlState, kstore: AKont): KAddr = c match {
+  def kalloc(c: ControlState): KAddr = c match {
     // todo: Fix
     case PState(Let(Bindings(List(Binding(name, _))), _), rho, s, kptr) => k match {
       case 0 | 1 => (Left(name), Nil)
@@ -124,122 +124,89 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
     kstore + (a, oldKonts + k)
   }
 
-  def updateKStoreValues(kstore: KStore, a: KAddr, konts: Set[AKont]) = {
-    val oldKonts = kstore.getOrElse(a, Set())
-    kstore + (a, oldKonts ++ konts)
-  }
-
   class PointerCESKException(s: String) extends CESKException(s)
 
   /** ******************************************************************
     * Main non-deterministic abstract step function
     * *******************************************************************/
   def mnext: Conf => Set[Conf] = {
-    // Application of lambda or reference
-    case c@(PState(App(f@(Lambda(_, _) | Ref(_)), args), rho, s, a), kstore) =>
 
-      atomicEval(f, rho, s).flatMap[Conf, Set[Conf]] {
-        // f refers to a closure
-        case Clo(lam@Lambda(Formals(params, _), body), rho1) => {
-          val paramNames = params.map(_.name)
-          val ai = paramNames.map(alloc(_, c)) // allocate addresses
-          val rho2 = updateEnv(rho1, paramNames.zip(ai)) // update function env
-
-          val arg_vals = args.args.map(ae => atomicEval(ae.exp, rho, s)) // map atomic arguments to values
-          val s1 = updateStore(s, ai.zip(arg_vals))
-
-          // In A-normal form only one expression in body
-          val e = getLambdaBodyInANF(lam)
-          mkSet(PState(e, rho2, s1, a), kstore)
-        }
-        // f refers to a stored primitive
-        case p@PrimLit(prim, _) => embedValueToExp(p) match {
-          case BadExp => Set.empty
-          case exp => mnext((PState(App(exp, args), rho, s, a), kstore))
-        }
-        case _ => Set.empty
-      }
-
-    /**
-     * Special hacky case because of (set!) desugaring
-     */
-    case c@(PState(l@Let(_, _), rho, s, kaddr), kstore)
-      if (decomposeLetInANF(l)._2.isUnspecified) => {
-      val (v, _, e) = decomposeLetInANF(l)
+    // (let ([x V]) E)
+    case c@(PState(LetForm(v, value, body), env, store, kaddr), kstore) if isAtomic(value) => {
       val a = alloc(v, c)
-      val rho1 = updateEnv(rho, List((v, a)))
-      Set((PState(e, rho1, s, kaddr), kstore))
+      val env1 = updateEnv(env, v, a)
+      val store1 = updateStore(store, a, atomicEval(value, env, store))
+      Set((PState(body, env1, store1, kaddr), kstore))
     }
 
-
-    case (c@PState(l@Let(_, _), rho, s, a), kstore) => {
-      val (v, call, e) = decomposeLetInANF(l)
-      val frameToAdd = LetFrame(v, e, rho)
-      for {
-        k <- lookupKStore(kstore, a)
-        b = kalloc(c, k)
-        kstore1 = updateKStore(kstore, (b, Pointed(frameToAdd, a)))
-      } yield (PState(call, rho, s, b), kstore1)
+    // (let ([x (if V E E)]) E)
+    case (c@PState(LetForm(v, i@If(cond, tBranch, eBranch), body), env, store, kaddr), kstore) => {
+      val frame = LetFrame(v, body, env)
+      val kaddr1 = kalloc(c)
+      val kstore1 = updateKStore(kstore, (kaddr1, Pointed(frame, kaddr)))
+      mnext((PState(i, env, store, kaddr1), kstore1))
     }
 
-    // return state
-    case c@(PState(ae, rho, s, kaddr), kstore)
-      if isAtomic(ae) => for {
-      k <- lookupKStore(kstore, kaddr)
-      values = atomicEval(ae, rho, s)
-      next <- returnValue(k, values, kstore, c, s)
-    } yield next
-
-
-    /** ****************************************************
-      * Conditional operator
-      * *****************************************************/
-    case (c@PState(b@If(cond, tBranch, eBranch), rho, s, a), kstore) => {
-      val frameToAdd = IfFrame(tBranch, eBranch, rho)
-      for {
-        k <- lookupKStore(kstore, a)
-        b = kalloc(c, k)
-        kstore1 = updateKStore(kstore, (b, Pointed(frameToAdd, a)))
-      } yield (PState(cond, rho, s, b), kstore1)
+    // (let ([x (set! x V)]) E)
+    case (c@PState(LetForm(_, SetVar(v, ae), body), env, store, kaddr), kstore) => {
+      val addr = lookupEnv(env, v)
+      val values = atomicEval(ae, env, store)
+      val store1 = updateStore(store, addr, values)
+      Set((PState(body, env, store1, kaddr), kstore))
     }
 
-    /** ****************************************************
-      * Set!
-      * *****************************************************/
-    case c@(PState(SetVar(v, ae), rho, s, kaddr), kstore)
-      // Only atomic values are assigned
-      if (isAtomic(ae)) => {
-      val addr = lookupEnv(rho, v)
-      val eval = atomicEval(ae, rho, s)
-      val s1 = updateStore(s, List((addr, eval)))
+    // (let ([x (V V ...)]) E)
+    case (c@PState(LetForm(v, a@AppForm(f, args), body), env, store, kaddr), kstore) => {
+      val frame = LetFrame(v, body, env)
+      val kaddr1 = kalloc(c)
+      val kstore1 = updateKStore(kstore, (kaddr1, Pointed(frame, kaddr)))
+      mnext((PState(a, env, store, kaddr1), kstore1))
+    }
+
+    // (if V E E)
+    case (PState(If(cond, tBranch, eBranch), env, store, kaddr), kstore) => {
+      val condValues = atomicEval(cond, env, store)
+      var succs = Set[Conf]()
+      if (condValues.exists(_ != BoolLit(false)))
+        succs = succs + ((PState(tBranch, env, store, kaddr), kstore))
+      if (condValues.contains(BoolLit(false)))
+        succs = succs + ((PState(eBranch, env, store, kaddr), kstore))
+      succs
+    }
+
+    // (set! x V)
+    case c@(PState(SetVar(v, ae), env, store, kaddr), kstore) => {
+      val addr = lookupEnv(env, v)
+      val values = atomicEval(ae, env, store)
+      val store1 = updateStore(store, addr, values)
       for {
         k <- lookupKStore(kstore, kaddr)
-        next <- returnValue(k, Set(), kstore, c, s1)
+        next <- returnValue(k, Set(), kstore, c, store1)
       } yield next
     }
 
-    /** ****************************************************
-      * Primitive applications
-      * *****************************************************/
-    // only atomic values or variable are supported in primops
-    case c@(PState(app@App(p@Prim(primName, _), args), rho, s, a), kstore) => {
-      // map atomic arguments to values (sets)
-      val arg_vals = args.args.map(ae => atomicEval(ae.exp, rho, s))
+    // ae
+    case c@(PState(ae, env, store, kaddr), kstore) if isAtomic(ae) => {
       for {
-        results <- arg_vals.size match {
-          case 0 => Set(evalPrimApp(primName, List()))
-          case 1 => for {a <- arg_vals.head} yield evalPrimApp(primName, List(a))
-          case 2 => for {
-            a <- arg_vals.head
-            b <- arg_vals.tail.head
-          } yield evalPrimApp(primName, List(a, b))
-          case n => {
-            throw new PointerCESKException("Primitive functions of arity " + n + " are not supported:\n" + app.toString)
-          }
+        k <- lookupKStore(kstore, kaddr)
+        values = atomicEval(ae, env, store)
+        next <- returnValue(k, values, kstore, c, store)
+      } yield next
+    }
+
+    // (V V ...)
+    case c@(PState(AppForm(f, args), env, store, kaddr), kstore) => {
+      atomicEval(f, env, store).flatMap[Conf, Set[Conf]] {
+        case Clo(LambdaForm(params, body), env1) => {
+          val ai = params.map(alloc(_, c))
+          val env2 = updateEnv(env1, params.zip(ai))
+
+          val argVals = args.map(atomicEval(_, env, store))
+          val store1 = updateStore(store, ai.zip(argVals))
+
+          Set((PState(body, env2, store1, kaddr), kstore))
         }
-        result <- results
-        state = analyseResult(result, rho, s, app, a)
-      } yield (state, kstore)
+      }
     }
 
     /** ****************************************************
@@ -256,33 +223,16 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
   /**
    * Value return
    */
-  def returnValue(k: AKont,
-                  values: Set[Val],
-                  kstore: KStore,
-                  c: Conf,
-                  s: Store): Set[Conf] = {
-    k match {
+  def returnValue(k: AKont, values: Set[Val], kstore: KStore, c: Conf,  s: Store): Set[Conf] = k match {
+    // return to final state
+    case MT => Set((PFinal(values), kstore))
 
-      // return to final state
-      case MT => Set((PFinal(values), kstore))
-
-      // return from let-statement
-      case Pointed(LetFrame(v, e, rho1), b) => {
-        val a = alloc(v, c)
-        val rho2 = updateEnv(rho1, List((v, a)))
-        val s1 = updateStore(s, List((a, values)))
-        Set((PState(e, rho2, s1, b), kstore))
-      }
-
-      // return from if-statement
-      case Pointed(IfFrame(tb, eb, rho1), b) => {
-        var nexts = Set[Conf]()
-        if (values.exists(_ != BoolLit(false)))
-          nexts = nexts + ((PState(tb, rho1, s, b), kstore))
-        if (values.contains(BoolLit(false)))
-          nexts = nexts + ((PState(eb, rho1, s, b), kstore))
-        nexts
-      }
+    // return from let-statement
+    case Pointed(LetFrame(v, e, env), b) => {
+      val a = alloc(v, c)
+      val rho2 = updateEnv(env, List((v, a)))
+      val s1 = updateStore(s, List((a, values)))
+      Set((PState(e, rho2, s1, b), kstore))
     }
   }
 
@@ -294,22 +244,32 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
   def vAddrDeps(c: Configuration) : List[Addr] = {
     val (exp, env, kaddr) = c
     exp match {
-      case App(f, args) =>
-        for {
-          exp <- f :: args.args.map(_.exp)
-          addr <- addressOf(exp, env)
-        } yield addr
-      case Let(Bindings(List(Binding(name, exp))), body) =>
-        addressOf(exp, env).toList
-      case If(cond, tBranch, eBranch) =>
+      case LetForm(v, value, body) if isAtomic(value) => {
+        addressOf(value, env).toList
+      }
+      case LetForm(v, If(cond, tBranch, eBranch), body) => {
         addressOf(cond, env).toList
-      case SetVar(name, ae) =>
+      }
+      case LetForm(_, SetVar(v, ae), body) => {
         addressOf(ae, env).toList
-      case ae =>
+      }
+      case LetForm(v, AppForm(f, args), body) => {
+        for (exp <- f :: args; addr <- addressOf(exp, env)) yield addr
+      }
+      case If(cond, tBranch, eBranch) => {
+        addressOf(cond, env).toList
+      }
+      case SetVar(v, ae) => {
         addressOf(ae, env).toList
+      }
+      case AppForm(f, args) => {
+        for (exp <- f :: args; addr <- addressOf(exp, env)) yield addr
+      }
+      case ae if isAtomic(ae) => {
+        addressOf(ae, env).toList
+      }
     }
   }
-
 
   def kAddrDeps(c: Configuration): List[KAddr] = c match {
     case (_, _, k) => List(k)
