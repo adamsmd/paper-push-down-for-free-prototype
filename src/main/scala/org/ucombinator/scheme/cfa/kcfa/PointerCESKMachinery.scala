@@ -52,7 +52,7 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
   /** ******************************************************************
     * Continuation sotre
     * *******************************************************************/
-  type KAddr = (Either[Var, Exp], List[AKont])
+  type KAddr = (Exp, Env)
 
   type KStore = StoreInterface[KAddr, AKont]
 
@@ -84,33 +84,12 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
   }
 
   def initState(e: Exp): Conf = {
-    val a0: KAddr = (Left(SName.gensym("mt")), Nil)
+    val a0: KAddr = (new Unspecified(), Map.empty)
     val newKStore: KStore = (new MapStore[KAddr, AKont]() + (a0, Set(MT)))
     (PState(e, Map.empty, new MapStore(Map.empty), a0), newKStore)
   }
 
-  /**
-   * Allocate a new continuation address basing on the control state and store
-   *
-   * @param c control state
-   * @param kstore kontinuation store
-   * @return new continuation address
-   */
-  def kalloc(c: ControlState): KAddr = c match {
-    // todo: Fix
-    case PState(Let(Bindings(List(Binding(name, _))), _), rho, s, kptr) => k match {
-      case 0 | 1 => (Left(name), Nil)
-      //      case 1 => (Left(name), List(kont))
-      case _ => throw new PointerCESKException("Analysis not implemented for k greater than 1 (" + k + ")")
-    }
-
-    case PState(e, rho, s, kptr) => k match {
-      case 0 | 1 => (Right(e), Nil)
-      //      case 1 => (Right(e), List(kont))
-      case _ => throw new PointerCESKException("Analysis not implemented for k greater than 1 (" + k + ")")
-    }
-    case _ => throw new PointerCESKException("Wrong state to allocate a continuation address:\n" + c.toString)
-  }
+  def kalloc(c: Conf, exp: Exp, env: Env): KAddr = (exp, env)
 
   def lookupKStore(kstore: KStore, a: KAddr): Set[AKont] = kstore.get(a) match {
     case Some(x) => x
@@ -140,11 +119,21 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
     }
 
     // (let ([x (if V E E)]) E)
-    case (c@PState(LetForm(v, i@If(cond, tBranch, eBranch), body), env, store, kaddr), kstore) => {
+    case c@(PState(e@LetForm(v, i@If(cond, tBranch, eBranch), body), env, store, kaddr), kstore) => {
       val frame = LetFrame(v, body, env)
-      val kaddr1 = kalloc(c)
-      val kstore1 = updateKStore(kstore, (kaddr1, Pointed(frame, kaddr)))
-      mnext((PState(i, env, store, kaddr1), kstore1))
+      val condValues = atomicEval(cond, env, store)
+      var succs = Set[Conf]()
+      if (condValues.exists(_ != BoolLit(false))) {
+        val kaddr1 = kalloc(c, tBranch, env)
+        val kstore1 = updateKStore(kstore, (kaddr1, Pointed(frame, kaddr)))
+        succs = succs + ((PState(tBranch, env, store, kaddr1), kstore1))
+      }
+      if (condValues.contains(BoolLit(false))) {
+        val kaddr1 = kalloc(c, eBranch, env)
+        val kstore1 = updateKStore(kstore, (kaddr1, Pointed(frame, kaddr)))
+        succs = succs + ((PState(e, env, store, kaddr1), kstore1))
+      }
+      succs
     }
 
     // (let ([x (set! x V)]) E)
@@ -156,11 +145,22 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
     }
 
     // (let ([x (V V ...)]) E)
-    case (c@PState(LetForm(v, a@AppForm(f, args), body), env, store, kaddr), kstore) => {
+    case c@(PState(e@LetForm(v, a@AppForm(f, args), body), env, store, kaddr), kstore) => {
       val frame = LetFrame(v, body, env)
-      val kaddr1 = kalloc(c)
-      val kstore1 = updateKStore(kstore, (kaddr1, Pointed(frame, kaddr)))
-      mnext((PState(a, env, store, kaddr1), kstore1))
+      atomicEval(f, env, store).flatMap[Conf, Set[Conf]] {
+        case Clo(LambdaForm(params, body), env1) => {
+          val ai = params.map(alloc(_, c))
+          val env2 = updateEnv(env1, params.zip(ai))
+
+          val argVals = args.map(atomicEval(_, env, store))
+          val store1 = updateStore(store, ai.zip(argVals))
+
+          val kaddr1 = kalloc(c, body, env2)
+          val kstore1 = updateKStore(kstore, (kaddr1, Pointed(frame, kaddr)))
+
+          Set((PState(body, env2, store1, kaddr1), kstore1))
+        }
+      }
     }
 
     // (if V E E)
@@ -195,7 +195,7 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
     }
 
     // (V V ...)
-    case c@(PState(AppForm(f, args), env, store, kaddr), kstore) => {
+    case c@(PState(e@AppForm(f, args), env, store, kaddr), kstore) => {
       atomicEval(f, env, store).flatMap[Conf, Set[Conf]] {
         case Clo(LambdaForm(params, body), env1) => {
           val ai = params.map(alloc(_, c))
@@ -204,7 +204,10 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
           val argVals = args.map(atomicEval(_, env, store))
           val store1 = updateStore(store, ai.zip(argVals))
 
-          Set((PState(body, env2, store1, kaddr), kstore))
+          val kaddr1 = kalloc(c, body, env2)
+          val kstore1 = kstore + (kaddr1, kstore(kaddr))
+
+          Set((PState(body, env2, store1, kaddr1), kstore1))
         }
       }
     }
@@ -288,12 +291,17 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
     (PState(exp, env, new SentinelStore[Addr, Val](s), kaddr), new SentinelStore[KAddr, AKont](k))
   }
 
+  def widen(c: Conf, s: Store, k: KStore): Conf = c match {
+    case (PState(exp, env, _, kptr), _) => (PState(exp, env, s, kptr), k)
+    case (state, _) => (state, k)
+  }
+
   /**
    * Kleene iteration of a work set of states
    */
   private def iterateKCFA(initialState: Conf): (Set[(Conf, Conf)], Set[Conf]) = {
     var edges = Set[Edge]()
-    var accumStates = Set[Conf]()
+    var count = 0
 
     var Some((init, globalVStore, globalKStore)) = unwiden(initialState)
 
@@ -315,10 +323,10 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
       val nexts = mnext(conf)
       val newEdges = nexts.map(s => (conf, s))
 
-      accumStates ++= nexts
       edges ++= newEdges
+      count += 1
 
-      println(progressPrefix + " " + accumStates.size + " states computed so far.")
+      println(progressPrefix + " " + count + " states computed so far.")
 
       for (n <- nexts; (next, nextVStore, nextKStore) <- unwiden(n)) {
 
@@ -356,7 +364,14 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
       }
     }
 
-    (edges, accumStates)
+    println("States explored: " + count)
+
+    val finalEdges = edges map {
+      case (c1, c2) => (widen(c1, globalVStore, globalKStore), widen(c2, globalVStore, globalKStore))
+    }
+    val accumStates = finalEdges.map(_._1) ++ finalEdges.map(_._2)
+
+    (finalEdges, accumStates)
   }
 
   type Edge = (Conf, Conf)
