@@ -256,7 +256,7 @@ class ANormalizer extends ProgramTransformer {
   }
 
   def normalizeExp(exp: Exp)(k: Exp => Exp): Exp = {
-    // System.err.println("Normalizing: " + exp) // DEBUG
+    System.err.println("Normalizing: " + exp) // DEBUG
     exp match {
       case _ if isAtomic(exp) => k(normalizeAtom(exp))
 
@@ -373,12 +373,12 @@ class ANormalizer extends ProgramTransformer {
   def normalizeBody(body: Body)(k: Exp => Exp): Body = body match {
     case Body(defs, exps) => {
       val normDefs = defs map normalize
-      exps reverse match {
-        case List(exp) => Body(normDefs, List(normalizeExp(exp)(k)))
-        case last :: front => {
-          val inner = front.foldLeft(normalizeExp(last)(k))((x, y) => Sequence(normalize(y), x))
+      exps match {
+        case List(exp) =>
+          Body(normDefs, List(normalizeExp(exp)(k)))
+        case hd :: tl => {
+          val inner = normalizeExp(hd)(hd => Sequence(hd, normalizeExp(Begin(Body(List(), tl)))(k)))
           Body(normDefs, List(inner))
-          //          Body(normDefs, (((normalizeExp(last)(k)) :: (front map normalize)).reverse))
         }
       }
     }

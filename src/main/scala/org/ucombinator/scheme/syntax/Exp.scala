@@ -1510,6 +1510,7 @@ object Sequence {
 
   def apply(exps: List[Exp]): Exp = {
     exps match {
+      case List() => Unspecified()
       case List(exp) => exp
       case _ => Begin(Body(List(), exps))
     }
