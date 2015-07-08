@@ -1,6 +1,8 @@
 package org.ucombinator.scheme.cfa.cesk.store
 
-case class MapStore[A, B](map: Map[A, Set[B]]) extends Store[A, B] {
+import org.ucombinator.util.MemoizedHashCode
+
+case class MapStore[A, B](map: Map[A, Set[B]]) extends Store[A, B] with MemoizedHashCode {
   def this() = this(Map())
 
   def get(addr: A): Option[Set[B]] = map get addr
