@@ -256,7 +256,7 @@ class ANormalizer extends ProgramTransformer {
   }
 
   def normalizeExp(exp: Exp)(k: Exp => Exp): Exp = {
-    System.err.println("Normalizing: " + exp) // DEBUG
+    // System.err.println("Normalizing: " + exp) // DEBUG
     exp match {
       case _ if isAtomic(exp) => k(normalizeAtom(exp))
 
