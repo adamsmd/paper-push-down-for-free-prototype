@@ -246,7 +246,7 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
 
   def vAddrDeps(c: Configuration) : List[Addr] = {
     val (exp, env, kaddr) = c
-    exp match {
+    def deps(exp: Exp): List[Addr] = exp match {
       case LetForm(v, value, body) if isAtomic(value) => {
         addressOf(value, env).toList
       }
@@ -266,12 +266,13 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
         addressOf(ae, env).toList
       }
       case AppForm(f, args) => {
-        for (exp <- f :: args; addr <- addressOf(exp, env)) yield addr
+        for (exp <- f :: args; addr <- deps(exp)) yield addr
       }
       case ae if isAtomic(ae) => {
         addressOf(ae, env).toList
       }
     }
+    deps(exp)
   }
 
   def kAddrDeps(c: Configuration): List[KAddr] = c match {
