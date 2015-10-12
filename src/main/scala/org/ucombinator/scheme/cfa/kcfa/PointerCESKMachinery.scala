@@ -342,7 +342,9 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
       edges ++= newEdges
       count += 1
 
-      println(progressPrefix + " " + count + " states computed so far.")
+      if (isVerbose) {
+        println(progressPrefix + " " + count + " states computed so far.")
+      }
 
       for (n <- nexts; (next, nextVStore, nextKStore) <- unwiden(n)) {
 
@@ -380,12 +382,13 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
       }
     }
 
-    println("States explored: " + count)
-
     val finalEdges = edges map {
       case (c1, c2) => (widen(c1, globalVStore, globalKStore), widen(c2, globalVStore, globalKStore))
     }
     val accumStates = finalEdges.map(_._1) ++ finalEdges.map(_._2)
+
+    println("Configurations explored: " + accumStates.size)
+    println("States explored: " + count)
 
     (finalEdges, accumStates)
   }

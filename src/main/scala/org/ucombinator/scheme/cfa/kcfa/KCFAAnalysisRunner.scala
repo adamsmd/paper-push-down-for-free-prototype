@@ -57,13 +57,13 @@ with FancyOutput {
     val secondTime = (new java.util.Date()).getTime
     val delta = (secondTime - firstTime)
 
-    println()
-    println("The analysis has taken " + (
-      if (delta / 1000 < 1) "less than one second."
-      else if (delta / 1000 == 1) "1 second."
-      else delta / 1000 + " seconds."))
-
-
+    if (isVerbose) {
+      println()
+      println("The analysis has taken " + (
+        if (delta / 1000 < 1) "less than one second."
+        else if (delta / 1000 == 1) "1 second."
+        else delta / 1000 + " seconds."))
+    }
 
     if (opts.verbose) {
       println()
@@ -82,9 +82,11 @@ with FancyOutput {
       println("Warning: no final state!\n")
     }
 
-    println()
-    println("Computing statistics")
-    println()
+    if (isVerbose) {
+      println()
+      println("Computing statistics")
+      println()
+    }
     val controlStates: Set[ControlState] = resultConfs.map(_._1)
 
     var stateCounter = 0
