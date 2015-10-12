@@ -44,6 +44,8 @@ abstract class AnalysisRunner(opts: CFAOptions) extends FancyOutput {
 
   def k = opts.k
 
+  def kallocPolicy = opts.kallocPolicy
+
   def isDummy = opts.dummy
 
   def simplify = opts.simplifyGraph

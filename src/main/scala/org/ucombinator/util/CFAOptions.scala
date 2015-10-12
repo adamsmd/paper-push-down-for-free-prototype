@@ -43,11 +43,12 @@ object AnalysisType extends Enumeration {
 import AnalysisType._
 
 class CFAOptions {
-  var fileName: String = null;
-  var help: Boolean = false;
+  var fileName: String = null
+  var help: Boolean = false
   var k: Int = 0
   var m: Int = 1
-  var printStates = false;
+  var kallocPolicy = "p4f"
+  var printStates = false
   var flatPolicy = "m"
   var analysis = "flat"
   var analysisType: AnalysisType = PDCFA
@@ -96,6 +97,11 @@ object CFAOptions {
 
       case "--kcfa" :: rest => {
         opts.analysisType = KCFA
+        parse(rest, opts)
+      }
+
+      case "--kalloc" :: policy :: rest => {
+        opts.kallocPolicy = policy
         parse(rest, opts)
       }
 

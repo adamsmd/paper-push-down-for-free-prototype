@@ -52,7 +52,7 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
   /** ******************************************************************
     * Continuation sotre
     * *******************************************************************/
-  type KAddr = (Exp, Env)
+  type KAddr = KAddress
 
   type KStore = StoreInterface[KAddr, AKont]
 
@@ -84,12 +84,27 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
   }
 
   def initState(e: Exp): Conf = {
-    val a0: KAddr = (new Unspecified(), Map.empty)
-    val newKStore: KStore = (new MapStore[KAddr, AKont]() + (a0, Set(MT)))
+    val a0: KAddr = InitKAddr
+    val newKStore: KStore = new MapStore[KAddr, AKont]() + (a0, Set(MT))
     (PState(e, Map.empty, new MapStore(Map.empty), a0), newKStore)
   }
 
-  def kalloc(c: Conf, exp: Exp, env: Env): KAddr = (exp, env)
+  val kalloc: (Conf, Exp, Env) => KAddr = kallocPolicy match {
+    case "p4f" =>
+      (c: Conf, targetExp: Exp, targetEnv: Env) => {
+        P4FKAddr(targetExp, targetEnv)
+      }
+    case "aac" =>
+      (c: Conf, targetExp: Exp, targetEnv: Env) => c match {
+        case (PState(exp, env, store: SentinelStore[Addr, Val], _), _) =>
+          AACKAddr(exp, env, targetExp, targetEnv, store.store)
+      }
+  }
+
+  abstract class KAddress
+  object InitKAddr extends KAddress
+  case class P4FKAddr(exp: Exp, env: Env) extends KAddress
+  case class AACKAddr(sexp: Exp, senv: Env, texp: Exp, tenv: Env, store: Store) extends KAddress
 
   def lookupKStore(kstore: KStore, a: KAddr): Set[AKont] = kstore.get(a) match {
     case Some(x) => x
