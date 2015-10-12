@@ -1,4 +1,4 @@
-name := "cfa"
+name := "p4f-prototype"
 
 version := "1.0"
 
