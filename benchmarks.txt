@@ -1,0 +1,10 @@
+benchmarks/gcfa2/mj09.scm
+benchmarks/gcfa2/eta.scm
+benchmarks/gcfa2/kcfa2.scm
+benchmarks/gcfa2/kcfa3.scm
+benchmarks/gcfa2/blur.scm
+benchmarks/gcfa2/loop2.scm
+benchmarks/gcfa2/sat.scm
+benchmarks/larceny/ack.sch
+benchmarks/larceny/cpstak.sch
+benchmarks/larceny/tak.sch
