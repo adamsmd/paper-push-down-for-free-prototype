@@ -146,7 +146,7 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
       if (condValues.contains(BoolLit(false))) {
         val kaddr1 = kalloc(c, eBranch, env)
         val kstore1 = updateKStore(kstore, (kaddr1, Pointed(frame, kaddr)))
-        succs = succs + ((PState(e, env, store, kaddr1), kstore1))
+        succs = succs + ((PState(eBranch, env, store, kaddr1), kstore1))
       }
       succs
     }
