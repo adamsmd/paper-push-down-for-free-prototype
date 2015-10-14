@@ -51,7 +51,7 @@ with FancyOutput {
 
     val firstTime = (new java.util.Date()).getTime
 
-    val (resultEdges, resultConfs): (Set[(Conf, Conf)], Set[Conf]) =
+    val (resultEdges, resultConfs, stateCount): (Set[(Conf, Conf)], Set[Conf], Int) =
       evaluateKCFA(anast)
 
     val secondTime = (new java.util.Date()).getTime
@@ -108,7 +108,7 @@ with FancyOutput {
     val interrupted = opts.interrupt && resultConfs.size > opts.interruptAfter
 
     dumpStatistics(opts, CFAStatistics(delta, sizeExp, allVars.size,
-      singletons.size, intNodes.size, intEdges.size, interrupted))
+      singletons.size, intNodes.size, stateCount, intEdges.size, interrupted))
 
     if (interrupt) {
       println ("Interrupted after " + resultConfs.size + " states visited")

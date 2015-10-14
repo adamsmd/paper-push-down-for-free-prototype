@@ -60,9 +60,10 @@ object RunCFA {
     --pdcfa                run Pushdown k-CFA (run by default)
     --kcfa                 run classic k-CFA
     --k k                  "k-degree" of the analysis, by default k = 0, only k = 0,1 are supported so far
+    --kalloc policy        continuation address allocation policy (p4f,aac,kcfa)
     --gc                   switch on abstract Garbage Collector (default = off)
     --dump-graph           dump Transition/Dyck State Graphs into a GraphViz file ./graphs/filename/graph-(analysis-type).gv
-    --dump-statisitcs      dump analysis statistics into ./statistics/filename/stat-(analysis-type).txt
+    --dump-statistics      dump analysis statistics into ./statistics/filename/stat-(analysis-type).txt
     --simple-graph         if the graph is dumped, distinct natural numbers are displayed on its nodes instead of actual configurations
     --interrupt-after n    interrupts the analysis after n states computed (default = off)
     --help                 print this message

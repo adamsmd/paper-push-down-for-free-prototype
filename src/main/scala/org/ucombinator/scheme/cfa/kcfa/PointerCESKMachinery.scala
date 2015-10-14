@@ -99,12 +99,17 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
         case (PState(exp, env, store: SentinelStore[Addr, Val], _), _) =>
           AACKAddr(exp, env, targetExp, targetEnv, store.store)
       }
+    case "kcfa" =>
+      (c: Conf, targetExp: Exp, targetEnv: Env) => {
+        SimpleKAddr(targetExp)
+      }
   }
 
   abstract class KAddress
   object InitKAddr extends KAddress
   case class P4FKAddr(exp: Exp, env: Env) extends KAddress
   case class AACKAddr(sexp: Exp, senv: Env, texp: Exp, tenv: Env, store: Store) extends KAddress
+  case class SimpleKAddr(exp: Exp) extends KAddress
 
   def lookupKStore(kstore: KStore, a: KAddr): Set[AKont] = kstore.get(a) match {
     case Some(x) => x
@@ -315,7 +320,7 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
   /**
    * Kleene iteration of a work set of states
    */
-  private def iterateKCFA(initialState: Conf): (Set[(Conf, Conf)], Set[Conf]) = {
+  private def iterateKCFA(initialState: Conf): (Set[(Conf, Conf)], Set[Conf], Int) = {
     var edges = Set[Edge]()
     var count = 0
 
@@ -390,12 +395,12 @@ trait PointerCESKMachinery extends CESKMachinery with FancyOutput {
     println("Configurations explored: " + accumStates.size)
     println("States explored: " + count)
 
-    (finalEdges, accumStates)
+    (finalEdges, accumStates, count)
   }
 
   type Edge = (Conf, Conf)
 
-  def evaluateKCFA(e: Exp): (Set[Edge], Set[Conf]) = {
+  def evaluateKCFA(e: Exp): (Set[Edge], Set[Conf], Int) = {
     iterateKCFA(initState(e))
   }
 

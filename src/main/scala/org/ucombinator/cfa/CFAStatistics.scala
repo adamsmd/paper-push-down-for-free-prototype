@@ -41,6 +41,7 @@ case class CFAStatistics(timeSec: Long,
                          numVars: Int,
                          numSingletons: Int,
                          numStates: Int,
+                         numStatesVisited: Int,
                          numEdges: Int,
                          interrupted: Boolean)
 

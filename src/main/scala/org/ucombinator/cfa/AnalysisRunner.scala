@@ -86,10 +86,11 @@ abstract class AnalysisRunner(opts: CFAOptions) extends FancyOutput {
   def dumpStatistics(opts: CFAOptions, stat: CFAStatistics): String = {
     import java.io._
 
-    val CFAStatistics(time, size, vars, singletons, states, edges, interrupted) = stat
+    val CFAStatistics(time, size, vars, singletons, states, visited, edges, interrupted) = stat
 
     val buffer = new StringBuffer()
     buffer.append("Expressions: " + size + "\n")
+    buffer.append("Visited states: " + visited + "\n")
     buffer.append("Control states: " + states + "\n")
     buffer.append("Transitions / DSG edges: " + edges + "\n")
     buffer.append("Total amount of variables: " + vars + "\n")

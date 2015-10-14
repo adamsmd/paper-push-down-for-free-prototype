@@ -126,7 +126,7 @@ with PDCFAGarbageCollector with IPDSMachinery with DSGMachinery with DSGAnalysis
     val interrupted = delta >= 60 * 1000 * 30
 
     dumpStatistics(opts, CFAStatistics(delta, sizeExp, vars,
-      singletons.size, resultDSG.nodes.size, resultDSG.edges.size, interrupted))
+      singletons.size, resultDSG.nodes.size, resultDSG.nodes.size, resultDSG.edges.size, interrupted))
 
     if (opts.dumpGraph) {
       println()

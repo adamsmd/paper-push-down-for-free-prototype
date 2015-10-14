@@ -67,7 +67,7 @@ trait FancyOutput {
    */
   def getGraphDumpFileName(opts: CFAOptions): String = {
     val cfa = opts.analysisType match {
-      case AnalysisType.KCFA => "-cfa"
+      case AnalysisType.KCFA => "-" + opts.kallocPolicy
       case AnalysisType.PDCFA => "-pdcfa"
     }
     val prefix = "graph-"
@@ -78,7 +78,7 @@ trait FancyOutput {
 
   def getStatisticsDumpFileName(opts: CFAOptions): String = {
     val cfa = opts.analysisType match {
-      case AnalysisType.KCFA => "-cfa"
+      case AnalysisType.KCFA => "-" + opts.kallocPolicy
       case AnalysisType.PDCFA => "-pdcfa"
     }
     val prefix = "stat-"
