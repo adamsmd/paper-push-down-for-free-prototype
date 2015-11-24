@@ -1,4 +1,6 @@
-This is a prototype implementation comparing continuation allocation strategies in an abstract interpreter.
+This is a prototype implementation comparing continuation allocation strategies in an abstract interpreter. It is based on the project:
+
+https://github.com/ilyasergey/reachability.
 
 ### Dependencies ###
 
@@ -13,4 +15,4 @@ The main class is org.ucombinator.cfa.RunCFA.
 
 ### Note ###
 
-The number of states visited may vary from run to run for some benchmarks. This is because the order in which states are visited is partially determined on the iteration order of sets in Scala which is not consistent from run to run. The order in which states are visited determines how we move up the lattice. Some state transitions jump further up the lattice of the analysis than others. Moving up the lattice more quickly results in fewer states being visited.
+The number of states visited may vary from run to run for some benchmarks. This is because the order in which states are visited is partially determined by the iteration order of sets in Scala which is not consistent from run to run. The order in which states are visited determines how the analysis moves up the lattice. Some state transitions jump further up the lattice than others. Moving up the lattice more quickly results in fewer states being visited.
