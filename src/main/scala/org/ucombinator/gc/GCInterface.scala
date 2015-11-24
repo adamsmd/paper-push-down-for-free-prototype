@@ -1,7 +1,7 @@
 package org.ucombinator.gc
 
 /**
- * @author ilya
+ * @author Ilya Sergey
  */
 
 trait GCInterface {

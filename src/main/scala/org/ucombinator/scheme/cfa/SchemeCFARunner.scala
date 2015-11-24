@@ -6,9 +6,8 @@ import org.ucombinator.scheme.syntax.Exp
 import org.ucombinator.util.{FancyOutput, CFAOptions}
 
 /**
- * @author ilya
+ * @author Ilya Sergey
  */
-
 abstract class SchemeCFARunner(opts: CFAOptions) extends AnalysisRunner(opts) with StateSpace with FancyOutput {
 
   def prettyPrintState(state: ControlState, map: Map[ControlState, Int]): String = {

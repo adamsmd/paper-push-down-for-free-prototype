@@ -4,10 +4,9 @@ import org.ucombinator.gc.GCInterface
 import org.ucombinator.util.{StringUtils, FancyOutput}
 
 /**
- * Implementation Dyck State Graphs
- * Main types and functions
+ * Main types and functions for Dyck State Graphs
  *
- * @author ilya
+ * @author Ilya Sergey
  */
 trait DSGMachinery {
   self: GCInterface with FancyOutput =>

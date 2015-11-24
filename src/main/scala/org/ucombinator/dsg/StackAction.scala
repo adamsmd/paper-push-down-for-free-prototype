@@ -1,12 +1,10 @@
 package org.ucombinator.dsg
 
 /**
- * @author ilya
- */
-
-/********************************************************************
  * Stack-action markers
- ********************************************************************/
+ *
+ * @author Ilya Sergey
+ */
 abstract sealed class StackAction[+F]
 
 // Stack unchanged

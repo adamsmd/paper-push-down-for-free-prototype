@@ -6,7 +6,7 @@ import org.ucombinator.util.{StringUtils, CFAOptions, FancyOutput}
 /**
  * An utility trait to process computed DSG graphs
  *
- * @author ilya
+ * @author Ilya Sergey
  */
 
 trait DSGAnalysisRunner {

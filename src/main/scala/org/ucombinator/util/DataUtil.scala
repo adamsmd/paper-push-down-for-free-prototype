@@ -1,9 +1,8 @@
 package org.ucombinator.util
 
 /**
- * @author ilya
+ * @author Ilya Sergey
  */
-
 object DataUtil {
 
   /**
